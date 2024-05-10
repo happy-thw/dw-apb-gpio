@@ -58,12 +58,6 @@ pub(crate) struct DwGpioRegisters {
     pub(crate) GPIO_CONFIG_REG1: ReadOnly<u32>,       // 0x74 - GPIO Configuration Register 1
 }
 
-/// The Struct of GpioDriver Data,include PORT A~D
-pub struct DwGpio{
-    /// include 4 Port
-    pub ports: [DwGpioPort;DWAPB_MAX_PORTS],
-}
-
 enum_from_primitive! {
     #[repr(u8)]
     enum Port{
@@ -74,23 +68,47 @@ enum_from_primitive! {
     }
 }
 
+/// The Struct of GpioDriver Data,include PORT A~D
+#[allow(dead_code)]
+pub struct DwGpio{
+    ports:[DwGpioPort;DWAPB_MAX_PORTS],
+}
+
+/// this is DwGpio's implementation
+impl DwGpio {
+    /// New a Gpio
+    pub fn new(base_addr: *mut u8) -> Self {
+        Self {
+            ports:[DwGpioPort::new(base_addr, 0); DWAPB_MAX_PORTS]
+        }
+    }
+    /// set gpio port value
+    pub fn set_port(&mut self, idx: usize, port: DwGpioPort ) {
+        if let Some(old_port) = self.ports.get_mut(idx) {
+            *old_port = port;
+        } else {
+            panic!("Index out of bounds");
+        }
+    }
+
+}
+
 /// The Struct of DwGpioPort,point to DwGpioRegisters
 #[derive(Copy,Clone)]
 pub struct DwGpioPort {
     regs: NonNull<DwGpioRegisters>,
-    idx:usize,          
+    idx: usize,          
 }
 
 // SAFETY: `DwGpioPort` holds a non-null pointer to a Gpio registers, which is safe to be used from any thread.
 unsafe impl Send for DwGpioPort {}
-
 // SAFETY: `DwGpioPort` holds a non-null pointer to a Gpio registers, references to which are safe to be used
 // from any thread.
 unsafe impl Sync for DwGpioPort {}
 
-/// this is GpioDriver
+/// this is GpioDriver's implementation
 impl DwGpioPort {
-    /// New a Gpio
+    /// New a GpioPort
     pub const fn new( base_addr:*mut u8, idx:usize ) -> Self {
         Self { regs:NonNull::new(base_addr).unwrap().cast(), 
                idx,
